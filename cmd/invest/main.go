@@ -11,14 +11,17 @@ import (
 	"invest/internal/api"
 	"invest/internal/config"
 	"log"
+	"fmt"
 )
 
 func main() {
+	fmt.Println("Invest started")
 	var cfg config.Config
 	err := envconfig.Process("invest", &cfg)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
+	fmt.Printf("Config: %v\n", cfg)
 
 	zapLogger := zap.NewNop()
 
@@ -42,6 +45,7 @@ func main() {
 
 	restAPI := api.New(app, db, zapLogger)
 	restAPI.MakeHandlers()
+	fmt.Println("restAPI ready to work")
 
 	err = app.Listen("0.0.0.0:8080")
 	if err != nil {
