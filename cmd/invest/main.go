@@ -47,7 +47,7 @@ func main() {
 	restAPI.MakeHandlers()
 	fmt.Println("restAPI ready to work")
 
-	err = app.Listen("0.0.0.0:8080")
+	err = app.Listen(":80")
 	if err != nil {
 		zapLogger.Error("failed start server", zap.Error(err))
 	}
