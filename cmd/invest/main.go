@@ -1,6 +1,8 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/kelseyhightower/envconfig"
 	"go.uber.org/zap"
@@ -11,11 +13,16 @@ import (
 	"invest/internal/api"
 	"invest/internal/config"
 	"log"
-	"fmt"
 )
 
 func main() {
 	fmt.Println("Invest started")
+	port := flag.Int("port", -1, "specify a port to use http rather than AWS Lambda")
+	flag.Parse()
+	portStr := ":8080"
+	if *port != -1 {
+		portStr = fmt.Sprintf(":%d", *port)
+	}
 	var cfg config.Config
 	err := envconfig.Process("invest", &cfg)
 	if err != nil {
@@ -47,7 +54,7 @@ func main() {
 	restAPI.MakeHandlers()
 	fmt.Println("restAPI ready to work")
 
-	err = app.Listen(":80")
+	err = app.Listen(portStr)
 	if err != nil {
 		zapLogger.Error("failed start server", zap.Error(err))
 	}

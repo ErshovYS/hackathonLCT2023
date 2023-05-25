@@ -65,4 +65,8 @@ func (a *API) MakeHandlers() {
 	a.app.Get("/handlers", func(c *fiber.Ctx) error {
 		return c.JSON(handlers)
 	})
+
+	a.app.Get("/", func(c *fiber.Ctx) error {
+		return c.SendString("Main page")
+	})
 }

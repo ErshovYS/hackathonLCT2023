@@ -5,6 +5,6 @@ type Config struct {
 }
 
 type DBConfig struct {
-	DSN  string `envconfig:"DB_DSN"`
-	Type string `envconfig:"DB_TYPE"`
+	DSN  string `envconfig:"DB_DSN" default:"test.db"`
+	Type string `envconfig:"DB_TYPE" default:"sqlite"`
 }
