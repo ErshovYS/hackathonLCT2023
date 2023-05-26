@@ -56,11 +56,11 @@ func main() {
 
 	if err = db.Transaction(func(tx *gorm.DB) error {
 		// Create admin
-		tx.Create(&models.User{Fullname: "Administrator", Password: "1", Token: "1", Role: models.Admin})
+		tx.Create(&models.User{LastName: "Administrator", Password: "1", Token: "1", Role: models.Admin})
 		if tx.Error != nil {
 			return tx.Error
 		}
-		tx.Create(&models.User{Fullname: "Investor", Password: "2", Token: "2", Role: models.Investor})
+		tx.Create(&models.User{LastName: "Investor", Password: "2", Token: "2", Role: models.Investor})
 		if tx.Error != nil {
 			return tx.Error
 		}

@@ -6,6 +6,7 @@ import (
 	"gorm.io/gorm"
 	"invest/internal/api/auth/authorization"
 	"invest/internal/api/auth/registration"
+	user_update "invest/internal/api/auth/update"
 	"invest/internal/api/calculations/delete"
 	"invest/internal/api/calculations/list"
 	"invest/internal/api/calculator"
@@ -36,6 +37,8 @@ func (a *API) MakeHandlers() {
 	a.app.Post("/registration", registration.Handler(a.db))
 	// POST /authorization
 	a.app.Post("/authorization", authorization.Handler(a.db))
+	// POST /user_update
+	a.app.Post("/user_update", user_update.Handler(a.db))
 
 	// GET /districts
 	a.app.Get("/districts", districts.Handler(a.db))
@@ -51,8 +54,8 @@ func (a *API) MakeHandlers() {
 	a.app.Post("/calculator", calculator.HandlerPost(a.db))
 	// POST /calculations
 	a.app.Post("/calculations/list", list.Handler(a.db))
-	// DELETE /calculation
-	a.app.Delete("/calculation/:id", delete.Handler(a.db))
+	// DELETE /calculations/{id}
+	a.app.Delete("/calculations/:id", delete.Handler(a.db))
 
 	routes := a.app.GetRoutes()
 	handlers := make(map[string]string)
@@ -64,9 +67,5 @@ func (a *API) MakeHandlers() {
 
 	a.app.Get("/handlers", func(c *fiber.Ctx) error {
 		return c.JSON(handlers)
-	})
-
-	a.app.Get("/", func(c *fiber.Ctx) error {
-		return c.SendString("Main page")
 	})
 }

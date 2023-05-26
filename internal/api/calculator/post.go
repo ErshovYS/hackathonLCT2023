@@ -116,10 +116,10 @@ func HandlerPost(db *gorm.DB) func(c *fiber.Ctx) error {
 		//personalNDFLTo := personalSalaryTo * 0.13
 
 		// estate
-		estateRentFrom := float32(dist.Price*12) * req.LandArea * 0.85 / 100
-		estateRentTo := float32(dist.Price*12) * req.LandArea * 1.15 / 100
-		estateTaxFrom := float32(ind.EstateTax) * coef * 0.85 / 100
-		estateTaxTo := float32(ind.EstateTax) * coef * 1.15 / 100
+		estatePriceFrom := float32(dist.Price) * req.LandArea * 0.85 / 100
+		estatePriceTo := float32(dist.Price) * req.LandArea * 1.15 / 100
+		estateTaxFrom := estatePriceFrom * 0.015 // float32(ind.EstateTax) * coef * 0.85 / 100
+		estateTaxTo := estatePriceFrom * 0.015   // float32(ind.EstateTax) * coef * 1.15 / 100
 
 		// taxes
 		moscowTaxFrom := float32(ind.MoscowTax) * coef * 0.85 / 100
@@ -146,8 +146,8 @@ func HandlerPost(db *gorm.DB) func(c *fiber.Ctx) error {
 		res := response{
 			PersonalFrom: personalSalaryFrom + personalSocialFrom + personalPensionFrom,
 			PersonalTo:   personalSalaryTo + personalSocialTo + personalPensionTo,
-			EstateFrom:   estateRentFrom + estateTaxFrom,
-			EstateTo:     estateRentTo + estateTaxTo,
+			EstateFrom:   estatePriceFrom + estateTaxFrom,
+			EstateTo:     estatePriceTo + estateTaxTo,
 			TaxFrom:      moscowTaxFrom + propertyTaxFrom + profitTaxFrom + transportTaxFrom + transportTaxFrom + otherTaxFrom + govReg + patentPrice,
 			TaxTo:        moscowTaxTo + propertyTaxTo + profitTaxTo + transportTaxTo + transportTaxTo + otherTaxTo + govReg + patentPrice,
 			ServiceFrom:  capBuildFrom + capRebuildFrom + financialFrom,

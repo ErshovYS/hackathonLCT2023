@@ -10,7 +10,9 @@ type Registration uint
 
 type User struct {
 	gorm.Model
-	Fullname     string
+	FirstName    string
+	MiddleName   string
+	LastName     string
 	Email        string
 	Organization string
 	INN          string
@@ -85,6 +87,14 @@ type Calculation struct {
 	RegistrationTaxID uint
 	PatentID          *uint
 	OtherPayments     uint64
+	PersonalFrom      float32
+	PersonalTo        float32
+	EstateFrom        float32
+	EstateTo          float32
+	TaxFrom           float32
+	TaxTo             float32
+	ServiceFrom       float32
+	ServiceTo         float32
 	ResultFrom        float64
 	ResultTo          float64
 	ReportLink        string

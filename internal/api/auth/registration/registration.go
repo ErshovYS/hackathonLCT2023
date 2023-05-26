@@ -6,10 +6,13 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 	"invest/internal/models"
+	"time"
 )
 
 type request struct {
-	Fullname     string `json:"fullname"`
+	FirstName    string `json:"first_name"`
+	MiddleName   string `json:"middle_name"`
+	LastName     string `json:"last_name"`
 	Email        string `json:"email"`
 	Organization string `json:"organization"`
 	INN          string `json:"INN"`
@@ -31,7 +34,9 @@ func Handler(db *gorm.DB) func(c *fiber.Ctx) error {
 		}
 
 		user := models.User{
-			Fullname:     body.Fullname,
+			FirstName:    body.FirstName,
+			MiddleName:   body.MiddleName,
+			LastName:     body.LastName,
 			Email:        body.Email,
 			Organization: body.Organization,
 			INN:          body.INN,
@@ -43,7 +48,7 @@ func Handler(db *gorm.DB) func(c *fiber.Ctx) error {
 			IndustryID:   body.IndustryID,
 			Role:         models.Investor,
 		}
-		data := []byte(fmt.Sprintf("%s:%s:%d", user.Fullname, user.Password, user.Role))
+		data := []byte(fmt.Sprintf("%s:%s:%s:%d", user.FirstName, user.LastName, user.Password, time.Now().Unix()))
 		user.Token = base64.StdEncoding.EncodeToString(data)
 
 		tx := db.Create(&user)
