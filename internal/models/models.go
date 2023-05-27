@@ -86,14 +86,14 @@ type Calculation struct {
 	Buildings         []Building  `gorm:"many2many:calculation_building;"`
 	RegistrationTaxID uint
 	PatentID          *uint
-	PersonalFrom      float32
-	PersonalTo        float32
-	EstateFrom        float32
-	EstateTo          float32
-	TaxFrom           float32
-	TaxTo             float32
-	ServiceFrom       float32
-	ServiceTo         float32
+	PersonalFrom      float64
+	PersonalTo        float64
+	EstateFrom        float64
+	EstateTo          float64
+	TaxFrom           float64
+	TaxTo             float64
+	ServiceFrom       float64
+	ServiceTo         float64
 	ResultFrom        float64
 	ResultTo          float64
 	ReportLink        string

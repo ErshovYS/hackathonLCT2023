@@ -5,7 +5,14 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 	"invest/internal/models"
+	"invest/internal/string_generator"
+	"strconv"
+	"time"
 )
+
+type Storage interface {
+	UploadFile(filename string, file []byte) (string, error)
+}
 
 type request struct {
 	IndustryID        *uint               `json:"industry_id"`
@@ -23,14 +30,14 @@ type request struct {
 }
 
 type response struct {
-	PersonalFrom float32 `json:"personal_from"`
-	PersonalTo   float32 `json:"personal_to"`
-	EstateFrom   float32 `json:"estate_from"`
-	EstateTo     float32 `json:"estate_to"`
-	TaxFrom      float32 `json:"tax_from"`
-	TaxTo        float32 `json:"tax_to"`
-	ServiceFrom  float32 `json:"service_from"`
-	ServiceTo    float32 `json:"service_to"`
+	PersonalFrom float64 `json:"personal_from"`
+	PersonalTo   float64 `json:"personal_to"`
+	EstateFrom   float64 `json:"estate_from"`
+	EstateTo     float64 `json:"estate_to"`
+	TaxFrom      float64 `json:"tax_from"`
+	TaxTo        float64 `json:"tax_to"`
+	ServiceFrom  float64 `json:"service_from"`
+	ServiceTo    float64 `json:"service_to"`
 	TotalFrom    float64 `json:"total_from"`
 	TotalTo      float64 `json:"total_to"`
 	ReportLink   string  `json:"report_link"`
@@ -43,11 +50,11 @@ type buildingPost struct {
 
 type equipmentPost struct {
 	Name     string  `json:"name"`
-	PriceRUB float32 `json:"price_rub"`
+	PriceRUB float64 `json:"price_rub"`
 	Count    uint32  `json:"count"`
 }
 
-func HandlerPost(db *gorm.DB) func(c *fiber.Ctx) error {
+func HandlerPost(db *gorm.DB, storage Storage) func(c *fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
 		var user models.User
 		if token, ok := c.GetReqHeaders()["Authorization"]; ok {
@@ -66,7 +73,7 @@ func HandlerPost(db *gorm.DB) func(c *fiber.Ctx) error {
 		var ptn models.Patent
 		var ind models.Industry
 		if err := db.Transaction(func(tx *gorm.DB) error {
-			tx.Select("price").Where("id = ?", req.DistrictID).First(&dist)
+			tx.Select("name", "price").Where("id = ?", req.DistrictID).First(&dist)
 
 			tx.Select("from", "to", "fee").Where("registration = ? AND tax = ?", req.RegistrationID, req.TaxID).First(&regTax)
 
@@ -83,7 +90,7 @@ func HandlerPost(db *gorm.DB) func(c *fiber.Ctx) error {
 			})
 		}
 
-		var equipmentPrice float32
+		var equipmentPrice float64
 		equipments := make([]models.Equipment, 0, len(req.Equipments))
 		for _, eq := range req.Equipments {
 			equipments = append(equipments, models.Equipment{
@@ -91,7 +98,7 @@ func HandlerPost(db *gorm.DB) func(c *fiber.Ctx) error {
 				PriceRUB: uint32(eq.PriceRUB * 100),
 				Count:    eq.Count,
 			})
-			equipmentPrice += eq.PriceRUB * float32(eq.Count) * 100
+			equipmentPrice += eq.PriceRUB * float64(eq.Count)
 		}
 
 		buildings := make([]models.Building, 0, len(req.Buildings))
@@ -102,45 +109,45 @@ func HandlerPost(db *gorm.DB) func(c *fiber.Ctx) error {
 			})
 		}
 
-		coef := float32(req.WorkerCount) / float32(ind.Workers)
+		coef := float64(req.WorkerCount) / float64(ind.Workers)
 
 		// personal
-		personalSalaryFrom := float32(ind.Salary*req.WorkerCount*12) * 0.85 / 100
-		personalSalaryTo := float32(ind.Salary*req.WorkerCount*12) * 1.15 / 100
+		personalSalaryFrom := float64(ind.Salary*req.WorkerCount*12) * 0.85 / 100
+		personalSalaryTo := float64(ind.Salary*req.WorkerCount*12) * 1.15 / 100
 		personalSocialFrom := personalSalaryFrom * 0.051
 		personalSocialTo := personalSalaryTo * 0.051
 		personalPensionFrom := personalSalaryFrom * 0.22
 		personalPensionTo := personalSalaryTo * 0.22
-		//personalNDFLFrom := personalSalaryFrom * 0.13
-		//personalNDFLTo := personalSalaryTo * 0.13
+		personalNDFLFrom := personalSalaryFrom * 0.13
+		personalNDFLTo := personalSalaryTo * 0.13
 
 		// estate
-		estatePriceFrom := float32(dist.Price) * req.LandArea * 0.85 / 100
-		estatePriceTo := float32(dist.Price) * req.LandArea * 1.15 / 100
-		estateTaxFrom := estatePriceFrom * 0.015 // float32(ind.EstateTax) * coef * 0.85 / 100
-		estateTaxTo := estatePriceFrom * 0.015   // float32(ind.EstateTax) * coef * 1.15 / 100
+		estatePriceFrom := float64(dist.Price) * float64(req.LandArea) * 0.85 / 100
+		estatePriceTo := float64(dist.Price) * float64(req.LandArea) * 1.15 / 100
+		estateTaxFrom := estatePriceFrom * 0.015 // float64(ind.EstateTax) * coef * 0.85 / 100
+		estateTaxTo := estatePriceFrom * 0.015   // float64(ind.EstateTax) * coef * 1.15 / 100
 
 		// taxes
-		moscowTaxFrom := float32(ind.MoscowTax) * coef * 0.85 / 100
-		moscowTaxTo := float32(ind.MoscowTax) * coef * 1.15 / 100
-		propertyTaxFrom := float32(ind.PropertyTax) * coef * 0.85 / 100
-		propertyTaxTo := float32(ind.PropertyTax) * coef * 1.15 / 100
-		profitTaxFrom := float32(ind.ProfitTax) * coef * 0.85 / 100
-		profitTaxTo := float32(ind.ProfitTax) * coef * 1.15 / 100
-		transportTaxFrom := float32(ind.TransportTax) * coef * 0.85 / 100
-		transportTaxTo := float32(ind.TransportTax) * coef * 1.15 / 100
-		otherTaxFrom := float32(ind.OtherTax) * coef * 0.85 / 100
-		otherTaxTo := float32(ind.OtherTax) * coef * 1.15 / 100
-		govReg := float32(regTax.Fee)
-		patentPrice := float32(ptn.Price) / 100
+		moscowTaxFrom := float64(ind.MoscowTax) * coef * 0.85 / 100
+		moscowTaxTo := float64(ind.MoscowTax) * coef * 1.15 / 100
+		propertyTaxFrom := float64(ind.PropertyTax) * coef * 0.85 / 100
+		propertyTaxTo := float64(ind.PropertyTax) * coef * 1.15 / 100
+		profitTaxFrom := float64(ind.ProfitTax) * coef * 0.85 / 100
+		profitTaxTo := float64(ind.ProfitTax) * coef * 1.15 / 100
+		transportTaxFrom := float64(ind.TransportTax) * coef * 0.85 / 100
+		transportTaxTo := float64(ind.TransportTax) * coef * 1.15 / 100
+		otherTaxFrom := float64(ind.OtherTax) * coef * 0.85 / 100
+		otherTaxTo := float64(ind.OtherTax) * coef * 1.15 / 100
+		govReg := float64(regTax.Fee)
+		patentPrice := float64(ptn.Price) / 100
 
 		// service
 		capBuildFrom := req.CapBuildingArea * models.CapBuildingFrom / 100
 		capBuildTo := req.CapBuildingArea * models.CapBuildingTo / 100
 		capRebuildFrom := req.CapRebuildingArea * models.CapRebuildingFrom / 100
 		capRebuildTo := req.CapRebuildingArea * models.CapRebuildingTo / 100
-		financialFrom := float32(regTax.From * 12)
-		financialTo := float32(regTax.To * 12)
+		financialFrom := float64(regTax.From * 12)
+		financialTo := float64(regTax.To * 12)
 
 		res := response{
 			PersonalFrom: personalSalaryFrom + personalSocialFrom + personalPensionFrom,
@@ -149,12 +156,11 @@ func HandlerPost(db *gorm.DB) func(c *fiber.Ctx) error {
 			EstateTo:     estatePriceTo + estateTaxTo + equipmentPrice,
 			TaxFrom:      moscowTaxFrom + propertyTaxFrom + profitTaxFrom + transportTaxFrom + transportTaxFrom + otherTaxFrom + govReg + patentPrice,
 			TaxTo:        moscowTaxTo + propertyTaxTo + profitTaxTo + transportTaxTo + transportTaxTo + otherTaxTo + govReg + patentPrice,
-			ServiceFrom:  capBuildFrom + capRebuildFrom + financialFrom,
-			ServiceTo:    capBuildTo + capRebuildTo + financialTo,
-			ReportLink:   fmt.Sprintf("[]byte"),
+			ServiceFrom:  float64(capBuildFrom+capRebuildFrom) + financialFrom,
+			ServiceTo:    float64(capBuildTo+capRebuildTo) + financialTo,
 		}
-		res.TotalFrom = float64(res.PersonalFrom + res.EstateFrom + res.TaxFrom)
-		res.TotalTo = float64(res.PersonalTo + res.EstateTo + res.TaxTo)
+		res.TotalFrom = res.PersonalFrom + res.EstateFrom + res.TaxFrom
+		res.TotalTo = res.PersonalTo + res.EstateTo + res.TaxTo
 
 		calc := &models.Calculation{
 			IndustryID:        req.IndustryID,
@@ -175,10 +181,73 @@ func HandlerPost(db *gorm.DB) func(c *fiber.Ctx) error {
 		}
 		if user.ID != 0 {
 			calc.UserID = &user.ID
+
+			resReport := map[string]float64{
+				"PersonalCount":       float64(req.WorkerCount),
+				"PersonalSalaryFrom":  personalSalaryFrom,
+				"PersonalSalaryTo":    personalSalaryTo,
+				"PersonalSocialFrom":  personalSocialFrom,
+				"PersonalSocialTo":    personalSocialTo,
+				"PersonalPensionFrom": personalPensionFrom,
+				"PersonalPensionTo":   personalPensionTo,
+				"PersonalNDFLFrom":    personalNDFLFrom,
+				"PersonalNDFLTo":      personalNDFLTo,
+				"EstatePriceFrom":     estatePriceFrom,
+				"EstatePriceTo":       estatePriceTo,
+				"EstateTaxFrom":       estateTaxFrom,
+				"EstateTaxTo":         estateTaxTo,
+				"EquipmentPrice":      equipmentPrice,
+				"MoscowTaxFrom":       moscowTaxFrom,
+				"MoscowTaxTo":         moscowTaxTo,
+				"PropertyTaxFrom":     propertyTaxFrom,
+				"PropertyTaxTo":       propertyTaxTo,
+				"ProfitTaxFrom":       profitTaxFrom,
+				"ProfitTaxTo":         profitTaxTo,
+				"TransportTaxFrom":    transportTaxFrom,
+				"TransportTaxTo":      transportTaxTo,
+				"OtherTaxFrom":        otherTaxFrom,
+				"OtherTaxTo":          otherTaxTo,
+				"PatentPrice":         patentPrice,
+				"GovReg":              govReg,
+				"CapBuildFrom":        float64(capBuildFrom),
+				"CapBuildTo":          float64(capBuildTo),
+				"CapRebuildFrom":      float64(capRebuildFrom),
+				"CapRebuildTo":        float64(capRebuildTo),
+				"FinancialFrom":       financialFrom,
+				"FinancialTo":         financialTo,
+				"TotalFrom":           res.TotalFrom,
+				"TotalTo":             res.TotalTo,
+			}
+			reportString := map[string]string{
+				"Industry":     ind.Name,
+				"District":     dist.Name,
+				"WorkersCount": strconv.FormatUint(uint64(req.WorkerCount), 10),
+			}
+			if req.RegistrationID == models.RegOOO {
+				reportString["Organization"] = "ООО"
+			} else {
+				reportString["Organization"] = "ИП"
+			}
+			b, err := string_generator.GenerateReport(reportString, resReport)
+			if err != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+					"message": err.Error(),
+				})
+			}
+
+			filename := fmt.Sprintf("%s%s%s%d.pdf", user.LastName, user.FirstName, user.MiddleName, time.Now().Unix())
+			link, err := storage.UploadFile(filename, b)
+			if err != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+					"message": err.Error(),
+				})
+			}
+
+			calc.ReportLink = link
+			res.ReportLink = link
 		}
 
 		tx := db.Save(&calc)
-
 		if tx.Error != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"message": tx.Error.Error(),

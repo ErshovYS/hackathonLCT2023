@@ -19,16 +19,18 @@ import (
 )
 
 type API struct {
-	app    *fiber.App
-	db     *gorm.DB
-	logger *zap.Logger
+	app     *fiber.App
+	db      *gorm.DB
+	storage calculator.Storage
+	logger  *zap.Logger
 }
 
-func New(app *fiber.App, db *gorm.DB, logger *zap.Logger) *API {
+func New(app *fiber.App, db *gorm.DB, storage calculator.Storage, logger *zap.Logger) *API {
 	api := &API{
-		app:    app,
-		db:     db,
-		logger: logger,
+		app:     app,
+		db:      db,
+		storage: storage,
+		logger:  logger,
 	}
 
 	return api
@@ -54,11 +56,10 @@ func (a *API) MakeHandlers() {
 	a.app.Get("/regtax", regtax.Handler(a.db))
 	// POST /users
 	a.app.Post("/users", users.Handler(a.db))
-
 	// GET /calculator
 	a.app.Get("/calculator", calculator.HandlerGet(a.db))
 	// POST /calculator
-	a.app.Post("/calculator", calculator.HandlerPost(a.db))
+	a.app.Post("/calculator", calculator.HandlerPost(a.db, a.storage))
 	// GET /calculations
 	a.app.Get("/calculations/list", list.Handler(a.db))
 	// DELETE /calculations/{id}

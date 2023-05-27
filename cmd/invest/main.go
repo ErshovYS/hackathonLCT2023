@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm"
 	"invest/internal/api"
 	"invest/internal/config"
+	"invest/internal/storage"
 	"log"
 )
 
@@ -39,15 +40,17 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
+	store := storage.New(cfg.Storage)
+
 	app := fiber.New()
 	app.Use(cors.New(cors.Config{
-		AllowHeaders:     "Origin, Content-Type, Accept, Content-Length, Accept-Language, Accept-Encoding, Connection, Access-Control-Allow-Origin",
+		AllowHeaders:     "Origin, Content-Type, Authorization, Accept, Content-Length, Accept-Language, Accept-Encoding, Connection, Access-Control-Allow-Origin",
 		AllowOrigins:     "*",
 		AllowCredentials: true,
 		AllowMethods:     "GET,POST,HEAD,PUT,DELETE,PATCH,OPTIONS",
 	}))
 
-	restAPI := api.New(app, db, zapLogger)
+	restAPI := api.New(app, db, store, zapLogger)
 	restAPI.MakeHandlers()
 
 	err = app.Listen("0.0.0.0:8080")

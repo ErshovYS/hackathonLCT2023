@@ -48,7 +48,7 @@ func Handler(db *gorm.DB) func(c *fiber.Ctx) error {
 			if iTx.Error != nil {
 				return iTx.Error
 			}
-		} else if user.Role != models.Admin {
+		} else if user.Role == models.Admin {
 			if userId != "" {
 				userID, err := strconv.ParseUint(userId, 10, 64)
 				if err != nil {
