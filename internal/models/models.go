@@ -75,7 +75,7 @@ type RegistrationTax struct {
 
 type Calculation struct {
 	gorm.Model
-	UserID            uint
+	UserID            *uint
 	IndustryID        *uint
 	WorkerCount       uint32
 	DistrictID        uint
@@ -86,7 +86,6 @@ type Calculation struct {
 	Buildings         []Building  `gorm:"many2many:calculation_building;"`
 	RegistrationTaxID uint
 	PatentID          *uint
-	OtherPayments     uint64
 	PersonalFrom      float32
 	PersonalTo        float32
 	EstateFrom        float32

@@ -17,7 +17,6 @@ type request struct {
 	RegistrationID    models.Registration `json:"registration_id"`
 	TaxID             models.Tax          `json:"tax_id"`
 	PatentID          *uint               `json:"patent_id"`
-	OtherPayments     uint64              `json:"other_payments"`
 	Equipments        []equipmentPost     `json:"equipments"`
 	Buildings         []buildingPost      `json:"buildings"`
 	CalculationID     uint                `json:"calculation_id"`
@@ -84,7 +83,7 @@ func HandlerPost(db *gorm.DB) func(c *fiber.Ctx) error {
 			})
 		}
 
-		var equipmentPrice float64
+		var equipmentPrice float32
 		equipments := make([]models.Equipment, 0, len(req.Equipments))
 		for _, eq := range req.Equipments {
 			equipments = append(equipments, models.Equipment{
@@ -92,7 +91,7 @@ func HandlerPost(db *gorm.DB) func(c *fiber.Ctx) error {
 				PriceRUB: uint32(eq.PriceRUB * 100),
 				Count:    eq.Count,
 			})
-			equipmentPrice += float64(eq.PriceRUB) * float64(eq.Count) * 100
+			equipmentPrice += eq.PriceRUB * float32(eq.Count) * 100
 		}
 
 		buildings := make([]models.Building, 0, len(req.Buildings))
@@ -146,46 +145,44 @@ func HandlerPost(db *gorm.DB) func(c *fiber.Ctx) error {
 		res := response{
 			PersonalFrom: personalSalaryFrom + personalSocialFrom + personalPensionFrom,
 			PersonalTo:   personalSalaryTo + personalSocialTo + personalPensionTo,
-			EstateFrom:   estatePriceFrom + estateTaxFrom,
-			EstateTo:     estatePriceTo + estateTaxTo,
+			EstateFrom:   estatePriceFrom + estateTaxFrom + equipmentPrice,
+			EstateTo:     estatePriceTo + estateTaxTo + equipmentPrice,
 			TaxFrom:      moscowTaxFrom + propertyTaxFrom + profitTaxFrom + transportTaxFrom + transportTaxFrom + otherTaxFrom + govReg + patentPrice,
 			TaxTo:        moscowTaxTo + propertyTaxTo + profitTaxTo + transportTaxTo + transportTaxTo + otherTaxTo + govReg + patentPrice,
 			ServiceFrom:  capBuildFrom + capRebuildFrom + financialFrom,
 			ServiceTo:    capBuildTo + capRebuildTo + financialTo,
 			ReportLink:   fmt.Sprintf("[]byte"),
 		}
-		res.TotalFrom = float64(res.PersonalFrom+res.EstateFrom+res.TaxFrom) + equipmentPrice
-		res.TotalTo = float64(res.PersonalTo+res.EstateTo+res.TaxTo) + equipmentPrice
+		res.TotalFrom = float64(res.PersonalFrom + res.EstateFrom + res.TaxFrom)
+		res.TotalTo = float64(res.PersonalTo + res.EstateTo + res.TaxTo)
 
+		calc := &models.Calculation{
+			IndustryID:        req.IndustryID,
+			WorkerCount:       req.WorkerCount,
+			DistrictID:        req.DistrictID,
+			LandArea:          req.LandArea,
+			CapBuildingArea:   req.CapBuildingArea,
+			CapRebuildingArea: req.CapRebuildingArea,
+			RegistrationTaxID: regTax.ID,
+			PatentID:          req.PatentID,
+			Equipments:        equipments,
+			Buildings:         buildings,
+			ResultFrom:        res.TotalFrom,
+			ResultTo:          res.TotalTo,
+		}
+		if req.CalculationID != 0 {
+			calc.ID = req.CalculationID
+		}
 		if user.ID != 0 {
-			if err := db.Transaction(func(tx *gorm.DB) error {
-				calc := &models.Calculation{
-					UserID:            user.ID,
-					IndustryID:        req.IndustryID,
-					WorkerCount:       req.WorkerCount,
-					DistrictID:        req.DistrictID,
-					LandArea:          req.LandArea,
-					CapBuildingArea:   req.CapBuildingArea,
-					CapRebuildingArea: req.CapRebuildingArea,
-					RegistrationTaxID: regTax.ID,
-					PatentID:          req.PatentID,
-					OtherPayments:     req.OtherPayments,
-					Equipments:        equipments,
-					Buildings:         buildings,
-					ResultFrom:        res.TotalFrom,
-					ResultTo:          res.TotalTo,
-				}
-				if req.CalculationID != 0 {
-					calc.ID = req.CalculationID
-				}
+			calc.UserID = &user.ID
+		}
 
-				return tx.Save(&calc).Error
+		tx := db.Save(&calc)
 
-			}); err != nil {
-				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-					"message": err.Error(),
-				})
-			}
+		if tx.Error != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"message": tx.Error.Error(),
+			})
 		}
 
 		return c.JSON(fiber.Map{

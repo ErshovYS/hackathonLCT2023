@@ -32,7 +32,7 @@ func Handler(db *gorm.DB) func(c *fiber.Ctx) error {
 		if iTx.Error != nil {
 			return iTx.Error
 		}
-		if user.Role != models.Admin && user.ID != calculation.UserID {
+		if user.Role != models.Admin && user.ID != *calculation.UserID {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"message": "It's not your data",
 			})
