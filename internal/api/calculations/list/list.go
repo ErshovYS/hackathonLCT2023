@@ -4,13 +4,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 	"invest/internal/models"
+	"strconv"
 )
-
-type request struct {
-	UserId uint `json:"user_id"`
-	Limit  int  `json:"limit"`
-	Offset int  `json:"offset"`
-}
 
 func Handler(db *gorm.DB) func(c *fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
@@ -24,27 +19,49 @@ func Handler(db *gorm.DB) func(c *fiber.Ctx) error {
 			})
 		}
 
-		var req request
-		if err := c.BodyParser(&req); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"message": err.Error(),
-			})
+		limit := 20
+		var offset int
+		var err error
+		qLimit := c.Query("limit")
+		if qLimit != "" {
+			limit, err = strconv.Atoi(qLimit)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"message": "limit is not a number",
+				})
+			}
 		}
+		qOffset := c.Query("offset")
+		if qOffset != "" {
+			offset, err = strconv.Atoi(qOffset)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"message": "offset is not a number",
+				})
+			}
+		}
+		userId := c.Query("user_id")
 
 		var calculations []models.Calculation
 		if user.Role == models.Investor {
-			iTx := db.Where("user_id =?", user.ID).Order("updated_at desc").Limit(req.Limit).Offset(req.Offset).Find(&calculations)
+			iTx := db.Where("user_id =?", user.ID).Order("updated_at desc").Limit(limit).Offset(offset).Find(&calculations)
 			if iTx.Error != nil {
 				return iTx.Error
 			}
 		} else if user.Role != models.Admin {
-			if req.UserId != 0 {
-				iTx := db.Where("user_id =?", req.UserId).Order("updated_at desc").Limit(req.Limit).Offset(req.Offset).Find(&calculations)
+			if userId != "" {
+				userID, err := strconv.ParseUint(userId, 10, 64)
+				if err != nil {
+					return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+						"message": "user_id is not a number",
+					})
+				}
+				iTx := db.Where("user_id =?", userID).Order("updated_at desc").Limit(limit).Offset(offset).Find(&calculations)
 				if iTx.Error != nil {
 					return iTx.Error
 				}
 			} else {
-				iTx := db.Order("updated_at desc").Limit(req.Limit).Offset(req.Offset).Find(&calculations)
+				iTx := db.Order("updated_at desc").Limit(limit).Offset(offset).Find(&calculations)
 				if iTx.Error != nil {
 					return iTx.Error
 				}

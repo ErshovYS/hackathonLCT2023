@@ -21,7 +21,7 @@ func Handler(db *gorm.DB) func(c *fiber.Ctx) error {
 		}
 
 		user := models.User{}
-		tx := db.Select("id", "token").Where("email = ? AND age = ?", body.Email, body.Password).First(&user)
+		tx := db.Select("id", "token").Where("email = ? AND password = ?", body.Email, body.Password).First(&user)
 		if tx.Error != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": tx.Error.Error(),

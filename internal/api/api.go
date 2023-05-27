@@ -14,6 +14,8 @@ import (
 	"invest/internal/api/equipments"
 	"invest/internal/api/industries"
 	"invest/internal/api/patents"
+	"invest/internal/api/regtax"
+	"invest/internal/api/users"
 )
 
 type API struct {
@@ -43,17 +45,22 @@ func (a *API) MakeHandlers() {
 	// GET /districts
 	a.app.Get("/districts", districts.Handler(a.db))
 	// GET /equipments
-	a.app.Group("/equipments", equipments.Handler(a.db))
+	a.app.Get("/equipments", equipments.Handler(a.db))
 	// GET /industries
-	a.app.Group("/industries", industries.Handler(a.db))
+	a.app.Get("/industries", industries.Handler(a.db))
 	// GET /patents
-	a.app.Group("/patents", patents.Handler(a.db))
+	a.app.Get("/patents", patents.Handler(a.db))
+	// GET /regtax
+	a.app.Get("/regtax", regtax.Handler(a.db))
+	// POST /users
+	a.app.Post("/users", users.Handler(a.db))
+
 	// GET /calculator
 	a.app.Get("/calculator", calculator.HandlerGet(a.db))
 	// POST /calculator
 	a.app.Post("/calculator", calculator.HandlerPost(a.db))
-	// POST /calculations
-	a.app.Post("/calculations/list", list.Handler(a.db))
+	// GET /calculations
+	a.app.Get("/calculations/list", list.Handler(a.db))
 	// DELETE /calculations/{id}
 	a.app.Delete("/calculations/:id", delete.Handler(a.db))
 
