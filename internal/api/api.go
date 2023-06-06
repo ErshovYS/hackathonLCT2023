@@ -9,6 +9,7 @@ import (
 	user_update "invest/internal/api/auth/update"
 	"invest/internal/api/calculations/delete"
 	"invest/internal/api/calculations/list"
+	"invest/internal/api/calculations/stats"
 	"invest/internal/api/calculator"
 	"invest/internal/api/districts"
 	"invest/internal/api/equipments"
@@ -60,10 +61,12 @@ func (a *API) MakeHandlers() {
 	a.app.Get("/calculator", calculator.HandlerGet(a.db))
 	// POST /calculator
 	a.app.Post("/calculator", calculator.HandlerPost(a.db, a.storage))
-	// GET /calculations
+	// GET /calculations/list
 	a.app.Get("/calculations/list", list.Handler(a.db))
 	// DELETE /calculations/{id}
 	a.app.Delete("/calculations/:id", delete.Handler(a.db))
+	// GET /calculations/stats
+	a.app.Get("/calculations/stats", stats.Handler(a.db))
 
 	routes := a.app.GetRoutes()
 	handlers := make(map[string]string)

@@ -10,6 +10,11 @@ import (
 	"time"
 )
 
+const (
+	coefFrom = 0.85 / 100
+	coefTo   = 1.15 / 100
+)
+
 type Storage interface {
 	UploadFile(filename string, file []byte) (string, error)
 }
@@ -67,6 +72,16 @@ func HandlerPost(db *gorm.DB, storage Storage) func(c *fiber.Ctx) error {
 				"message": err.Error(),
 			})
 		}
+		if req.RegistrationID == models.RegIP && req.WorkerCount > 100 {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"message": "Workers count for IP can't be more 100",
+			})
+		}
+		if req.RegistrationID == models.RegIP && req.TaxID == models.TaxPatent && req.WorkerCount > 15 {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"message": "Workers count for IP with patent can't be more 15",
+			})
+		}
 
 		var dist models.District
 		var regTax models.RegistrationTax
@@ -112,8 +127,8 @@ func HandlerPost(db *gorm.DB, storage Storage) func(c *fiber.Ctx) error {
 		coef := float64(req.WorkerCount) / float64(ind.Workers)
 
 		// personal
-		personalSalaryFrom := float64(ind.Salary*req.WorkerCount*12) * 0.85 / 100
-		personalSalaryTo := float64(ind.Salary*req.WorkerCount*12) * 1.15 / 100
+		personalSalaryFrom := float64(ind.Salary*req.WorkerCount*12) * coefFrom
+		personalSalaryTo := float64(ind.Salary*req.WorkerCount*12) * coefTo
 		personalSocialFrom := personalSalaryFrom * 0.051
 		personalSocialTo := personalSalaryTo * 0.051
 		personalPensionFrom := personalSalaryFrom * 0.22
@@ -122,22 +137,22 @@ func HandlerPost(db *gorm.DB, storage Storage) func(c *fiber.Ctx) error {
 		personalNDFLTo := personalSalaryTo * 0.13
 
 		// estate
-		estatePriceFrom := float64(dist.Price) * float64(req.LandArea) * 0.85 / 100
-		estatePriceTo := float64(dist.Price) * float64(req.LandArea) * 1.15 / 100
-		estateTaxFrom := estatePriceFrom * 0.015 // float64(ind.EstateTax) * coef * 0.85 / 100
-		estateTaxTo := estatePriceFrom * 0.015   // float64(ind.EstateTax) * coef * 1.15 / 100
+		estatePriceFrom := float64(dist.Price) * float64(req.LandArea) * coefFrom
+		estatePriceTo := float64(dist.Price) * float64(req.LandArea) * coefTo
+		estateTaxFrom := estatePriceFrom * 0.015 // float64(ind.EstateTax) * coef * coefFrom
+		estateTaxTo := estatePriceFrom * 0.015   // float64(ind.EstateTax) * coef * coefTo
 
 		// taxes
-		moscowTaxFrom := float64(ind.MoscowTax) * coef * 0.85 / 100
-		moscowTaxTo := float64(ind.MoscowTax) * coef * 1.15 / 100
-		propertyTaxFrom := float64(ind.PropertyTax) * coef * 0.85 / 100
-		propertyTaxTo := float64(ind.PropertyTax) * coef * 1.15 / 100
-		profitTaxFrom := float64(ind.ProfitTax) * coef * 0.85 / 100
-		profitTaxTo := float64(ind.ProfitTax) * coef * 1.15 / 100
-		transportTaxFrom := float64(ind.TransportTax) * coef * 0.85 / 100
-		transportTaxTo := float64(ind.TransportTax) * coef * 1.15 / 100
-		otherTaxFrom := float64(ind.OtherTax) * coef * 0.85 / 100
-		otherTaxTo := float64(ind.OtherTax) * coef * 1.15 / 100
+		moscowTaxFrom := float64(ind.MoscowTax) * coef * coefFrom
+		moscowTaxTo := float64(ind.MoscowTax) * coef * coefTo
+		propertyTaxFrom := float64(ind.PropertyTax) * coef * coefFrom
+		propertyTaxTo := float64(ind.PropertyTax) * coef * coefTo
+		profitTaxFrom := float64(ind.ProfitTax) * coef * coefFrom
+		profitTaxTo := float64(ind.ProfitTax) * coef * coefTo
+		transportTaxFrom := float64(ind.TransportTax) * coef * coefFrom
+		transportTaxTo := float64(ind.TransportTax) * coef * coefTo
+		otherTaxFrom := float64(ind.OtherTax) * coef * coefFrom
+		otherTaxTo := float64(ind.OtherTax) * coef * coefTo
 		govReg := float64(regTax.Fee)
 		patentPrice := float64(ptn.Price) / 100
 
@@ -148,6 +163,22 @@ func HandlerPost(db *gorm.DB, storage Storage) func(c *fiber.Ctx) error {
 		capRebuildTo := req.CapRebuildingArea * models.CapRebuildingTo / 100
 		financialFrom := float64(regTax.From * 12)
 		financialTo := float64(regTax.To * 12)
+
+		if req.RegistrationID == models.RegIP && req.TaxID == models.TaxYCH {
+			personalSocialFrom = 0
+			personalSocialTo = 0
+			personalPensionFrom = personalSalaryFrom * 0.2
+			personalPensionTo = personalSalaryTo * 0.2
+		} else if req.RegistrationID == models.RegIP && req.TaxID == models.TaxPatent {
+			profitTaxFrom = 0
+			profitTaxTo = 0
+			estateTaxFrom = 0
+			estateTaxTo = 0
+			transportTaxFrom = 0
+			transportTaxTo = 0
+			personalNDFLFrom = 0
+			personalNDFLTo = 0
+		}
 
 		res := response{
 			PersonalFrom: personalSalaryFrom + personalSocialFrom + personalPensionFrom,
